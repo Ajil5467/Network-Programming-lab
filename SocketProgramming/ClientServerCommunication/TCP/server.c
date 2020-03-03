@@ -1,35 +1,85 @@
-#include <sys/types.h>
-#include <stdio.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+#include <stdio.h> 
+#include <netdb.h> 
+#include <netinet/in.h> 
+#include <stdlib.h> 
+#include <string.h> 
+#include <sys/socket.h> 
+#include <sys/types.h> 
+#define MAX 80 
+#define PORT 8080 
+#define SA struct sockaddr 
 
-int main()
-{
-    int clientsocket, serversocket;
-    struct sockaddr_in serveraddr, clientaddr;
-    socklen_t len;
-    char message[50], writeMsg[20] = "hello client";
-    serversocket = socket(AF_INET, SOCK_STREAM, 0);
-    bzero((char *)&serveraddr, sizeof(serveraddr));
-    serveraddr.sin_family = AF_INET;
-    serveraddr.sin_port = htons(5030);
-    serveraddr.sin_addr.s_addr = INADDR_ANY;
-    bind(serversocket, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
-    bzero((char *)&clientaddr, sizeof(clientaddr));
-    len = sizeof(clientaddr);
-    listen(serversocket, 5);
-    printf("\n[S]: Waiting for client connectivity\n");
-    clientsocket = accept(serversocket, (struct sockaddr *)&clientaddr, &len);
-    printf("\n[S]: Client connected \n");
-    printf("\n[S]: Reading message from client \n");
-    read(clientsocket, message, sizeof(message));
-    printf("\n[S]: The client has send: %s\n", message);
-    printf("\n[S]: Sending message to client \n");
-    write(clientsocket, writeMsg, sizeof(writeMsg));
-    printf("\n[S]: Message sent. \n");
-    close(clientsocket);
-    close(serversocket);
-}
+void func(int sockfd) 
+{ 
+	char buff[MAX]; 
+	int n; 
+	for (;;) 
+	{ 
+		bzero(buff, MAX); 
+
+		read(sockfd, buff, sizeof(buff)); 
+		 
+		printf("From client: %s\t To client : ", buff); 
+		bzero(buff, MAX); 
+		n = 0; 
+		
+		while ((buff[n++] = getchar()) != '\n'); 
+
+		write(sockfd, buff, sizeof(buff)); 
+
+		if (strncmp("exit", buff, 4) == 0) 
+		{ 
+			printf("Server Exit...\n"); 
+			break; 
+		} 
+	} 
+} 
+
+int main() 
+{ 
+	int sockfd, connfd, len; 
+	struct sockaddr_in servaddr, cli; 
+	sockfd = socket(AF_INET, SOCK_STREAM, 0); 
+	if (sockfd == -1) 
+	{ 
+		printf("socket creation failed...\n"); 
+		exit(0); 
+	} 
+	else
+		printf("Socket successfully created..\n"); 
+	bzero(&servaddr, sizeof(servaddr)); 
+
+	servaddr.sin_family = AF_INET; 
+	servaddr.sin_addr.s_addr = htonl(INADDR_ANY); 
+	servaddr.sin_port = htons(PORT); 
+
+	if ((bind(sockfd, (SA*)&servaddr, sizeof(servaddr))) != 0) 
+	{ 
+		printf("socket bind failed...\n"); 
+		exit(0); 
+	} 
+	else
+		printf("Socket successfully binded..\n"); 
+
+	if ((listen(sockfd, 5)) != 0) 
+	{ 
+		printf("Listen failed...\n"); 
+		exit(0); 
+	} 
+	else
+		printf("Server listening..\n"); 
+	len = sizeof(cli); 
+
+	connfd = accept(sockfd, (SA*)&cli, &len); 
+	if (connfd < 0) 
+	{ 
+		printf("server acccept failed...\n"); 
+		exit(0); 
+	} 
+	else
+		printf("server acccept the client...\n"); 
+
+	func(connfd); 
+
+	close(sockfd); 
+} 
